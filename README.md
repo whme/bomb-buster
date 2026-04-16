@@ -90,15 +90,15 @@ reduced per-player information.
 
 ## Tech Stack
 
-| Layer       | Technology                                                     |
-|-------------|----------------------------------------------------------------|
-| Language    | TypeScript                                                     |
-| Frontend    | React (single-page application)                                |
-| Styling     | Tailwind CSS                                                   |
-| Backend     | Supabase (PostgreSQL, Realtime, Edge Functions, Auth)          |
-| Hosting     | GitHub Pages                                                   |
-| QR Codes    | QR code generation library (e.g. `qrcode.react`)              |
-| Dev Setup   | Docker dev container (Node + Supabase local)                   |
+| Layer     | Technology                                            |
+| --------- | ----------------------------------------------------- |
+| Language  | TypeScript                                            |
+| Frontend  | React (single-page application)                       |
+| Styling   | Tailwind CSS                                          |
+| Backend   | Supabase (PostgreSQL, Realtime, Edge Functions, Auth) |
+| Hosting   | GitHub Pages                                          |
+| QR Codes  | QR code generation library (e.g. `qrcode.react`)      |
+| Dev Setup | Docker dev container (Node + Supabase local)          |
 
 ### Architecture
 
@@ -214,13 +214,13 @@ erDiagram
 
 ### Enum Types
 
-| Enum | Used By | Values |
-|---|---|---|
-| `game_status` | `game.status` | `lobby`, `in_progress`, `won`, `lost`, `cancelled` |
-| `wire_type` | `game_tile.wire_type`, `game_action.declared_wire_type` | `blue`, `yellow`, `red` |
-| `game_action_type` | `game_action.action_type` | `hint`, `guess`, `solo_cut` |
-| `action_outcome` | `game_action.outcome` | `correct`, `incorrect`, `hit_red`, `win`, `lose` |
-| `affected_tile_effect` (JSON value) | `game_action.affected_tiles[].effect` | `targeted`, `revealed`, `cut` |
+| Enum                                | Used By                                                 | Values                                             |
+| ----------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| `game_status`                       | `game.status`                                           | `lobby`, `in_progress`, `won`, `lost`, `cancelled` |
+| `wire_type`                         | `game_tile.wire_type`, `game_action.declared_wire_type` | `blue`, `yellow`, `red`                            |
+| `game_action_type`                  | `game_action.action_type`                               | `hint`, `guess`, `solo_cut`                        |
+| `action_outcome`                    | `game_action.outcome`                                   | `correct`, `incorrect`, `hit_red`, `win`, `lose`   |
+| `affected_tile_effect` (JSON value) | `game_action.affected_tiles[].effect`                   | `targeted`, `revealed`, `cut`                      |
 
 ### Notes
 
@@ -334,7 +334,7 @@ bomb-buster/
 ### Phase 1 -- MVP
 
 - [ ] Project scaffolding (React + Vite + Tailwind + Supabase)
-- [ ] Dev container setup (Docker with Node + Supabase local)
+- [x] Dev container setup (Docker with Node + Supabase local)
 - [ ] Supabase database schema and Row Level Security policies
 - [ ] Edge Functions for game actions (create, join, start, guess, solo cut)
 - [ ] Lobby UI (create game, QR code invite, player list, ready state)
