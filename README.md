@@ -90,56 +90,54 @@ reduced per-player information.
 
 ## Tech Stack
 
-| Layer     | Technology                                            |
-| --------- | ----------------------------------------------------- |
-| Language  | TypeScript                                            |
-| Frontend  | React (single-page application)                       |
-| Styling   | Tailwind CSS                                          |
-| Backend   | Supabase (PostgreSQL, Realtime, Edge Functions, Auth) |
-| Hosting   | GitHub Pages                                          |
-| QR Codes  | QR code generation library (e.g. `qrcode.react`)      |
-| Dev Setup | Docker dev container (Node + Supabase local)          |
+| Layer       | Technology                                                     |
+|-------------|----------------------------------------------------------------|
+| Language    | TypeScript                                                     |
+| Frontend    | React (single-page application)                                |
+| Styling     | Tailwind CSS                                                   |
+| Backend     | Supabase (PostgreSQL, Realtime, Edge Functions)                |
+| Hosting     | GitHub Pages                                                   |
+| QR Codes    | QR code generation library (e.g. `qrcode.react`)              |
+| Dev Setup   | Docker dev container (Node + Supabase local)                   |
 
 ### Architecture
 
 The application is a static React SPA hosted on GitHub Pages with Supabase providing all
 backend services. There is no custom server.
 
-**Game state** lives in Supabase PostgreSQL. All game actions (guesses, solo cuts) are
-processed by Supabase Edge Functions, which act as the authoritative game engine. Clients
-never directly modify game state -- they call Edge Functions, which validate the action and
-update the database.
+**Game state** lives in Supabase PostgreSQL. All game actions (starting hints, guesses, solo
+cuts) are processed by Supabase Edge Functions, which act as the authoritative game engine.
+Clients never directly modify game state -- they call Edge Functions, which validate the
+action and update the database.
 
-**Hidden information** is enforced via Row Level Security (RLS). Each player can only query
-their own tiles from the database. Publicly visible state (cut tiles, detonator position,
-whose turn it is, revealed tile values) is readable by all players in the session.
+**Hidden information** is enforced by the backend data-access layer. The schema assumes a
+game-scoped player identity, so clients should only receive hidden tiles for the
+`game_player` they control. Publicly visible state (cut tiles, detonator position, whose
+turn it is, revealed tile values) is readable by all players in the game.
 
 **Real-time synchronization** uses Supabase Realtime channels. When the Edge Function updates
 game state, all connected clients receive the changes via their Realtime subscription and
 re-render accordingly.
 
-**Invites** work by generating a URL containing the game session ID. This URL is encoded as a
-QR code that other players scan to join.
+**Invites** work by generating a URL containing the game invite code. This URL is encoded as
+a QR code that other players scan to join.
 
 ## Database Schema (MVP)
 
 ```mermaid
 erDiagram
-    app_user {
-        uuid id PK
-        text display_name
-        timestamptz created_at
-    }
-
     game {
         uuid id PK
         text invite_code UK
-        uuid host_user_id FK
-        game_status status "lobby,in_progress,won,lost,cancelled"
-        uuid current_turn_rack_id FK
+        uuid host_player_id FK
+        uuid captain_player_id FK
+        game_status status "lobby,setup,in_progress,won,lost,cancelled"
+        uuid current_turn_player_id FK "null until begin_play"
+        int red_wire_count
+        int yellow_wire_count
         int turn_number
         int detonator_step
-        int detonator_limit
+        int detonator_limit "null until start_game"
         int next_yellow_rank
         timestamptz started_at
         timestamptz ended_at
@@ -147,20 +145,21 @@ erDiagram
         timestamptz updated_at
     }
 
+    game_player {
+        uuid id PK
+        uuid game_id FK
+        text display_name
+        int seat_index
+        int turn_order_index "null until start_game"
+        timestamptz joined_at
+    }
+
     game_rack {
         uuid id PK
         uuid game_id FK
         int rack_index
-        uuid controller_user_id FK
+        uuid controller_player_id FK
         timestamptz created_at
-    }
-
-    game_user {
-        uuid game_id PK,FK
-        uuid user_id PK,FK
-        int seat_index
-        boolean is_ready
-        timestamptz joined_at
     }
 
     game_tile {
@@ -180,9 +179,9 @@ erDiagram
         uuid id PK
         uuid game_id FK
         int turn_number
-        uuid actor_user_id FK
-        uuid actor_rack_id FK
-        game_action_type action_type "hint,guess,solo_cut"
+        uuid actor_player_id FK
+        uuid actor_rack_id FK "nullable"
+        game_action_type action_type "starting_hint,guess,solo_cut"
         uuid target_rack_id FK
         uuid target_tile_id FK
         wire_type declared_wire_type "blue,yellow,red"
@@ -193,20 +192,20 @@ erDiagram
         timestamptz created_at
     }
 
-    app_user ||--o{ game : hosts
-    game o|--o| game_rack : current_turn
+    game_player ||--o| game : hosts
+    game_player ||--o| game : captains
+    game o|--o| game_player : current_turn
 
-    game ||--o{ game_user : has_players
-    app_user ||--o{ game_user : joins
+    game ||--o{ game_player : has_players
 
     game ||--o{ game_rack : has_racks
-    app_user ||--o{ game_rack : controls
+    game_player ||--o{ game_rack : controls
 
     game ||--o{ game_tile : has
     game_rack ||--o{ game_tile : owns
 
     game ||--o{ game_action : logs
-    app_user ||--o{ game_action : actor
+    game_player ||--o{ game_action : actor
     game_rack ||--o{ game_action : actor_rack
     game_rack ||--o{ game_action : target_rack
     game_tile ||--o{ game_action : target_tile
@@ -214,21 +213,31 @@ erDiagram
 
 ### Enum Types
 
-| Enum                                | Used By                                                 | Values                                             |
-| ----------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
-| `game_status`                       | `game.status`                                           | `lobby`, `in_progress`, `won`, `lost`, `cancelled` |
-| `wire_type`                         | `game_tile.wire_type`, `game_action.declared_wire_type` | `blue`, `yellow`, `red`                            |
-| `game_action_type`                  | `game_action.action_type`                               | `hint`, `guess`, `solo_cut`                        |
-| `action_outcome`                    | `game_action.outcome`                                   | `correct`, `incorrect`, `hit_red`, `win`, `lose`   |
-| `affected_tile_effect` (JSON value) | `game_action.affected_tiles[].effect`                   | `targeted`, `revealed`, `cut`                      |
+| Enum | Used By | Values |
+|---|---|---|
+| `game_status` | `game.status` | `lobby`, `setup`, `in_progress`, `won`, `lost`, `cancelled` |
+| `wire_type` | `game_tile.wire_type`, `game_action.declared_wire_type` | `blue`, `yellow`, `red` |
+| `game_action_type` | `game_action.action_type` | `starting_hint`, `guess`, `solo_cut` |
+| `action_outcome` | `game_action.outcome` | `correct`, `incorrect`, `hit_red`, `win`, `lose`, `NULL` for `starting_hint` |
+| `affected_tile_effect` (JSON value) | `game_action.affected_tiles[].effect` | `targeted`, `revealed`, `cut` |
 
 ### Notes
 
-- `game` stores both lobby data and in-game runtime state.
-- `game_user` tracks membership/readiness (one row per user per game).
-- `game_rack` allows one user to control multiple racks in the same game.
-- Turn flow is rack-based via `game.current_turn_rack_id`.
-- `game_action` is a lightweight immutable action log.
+- `game` stores lobby, setup, and in-game runtime state.
+- `game_player` is a per-game identity row. Joining a different game creates a different
+  `game_player`.
+- `game.red_wire_count` and `game.yellow_wire_count` are the only host-configurable lobby
+  settings in MVP.
+- `game.captain_player_id` is always set and determines who starts first.
+- `game.current_turn_player_id` makes turn flow player-based, not rack-based.
+- `game_rack` allows one player to control multiple racks in the same game.
+- `game_player.turn_order_index` is assigned during `start_game`; non-captain players are
+  randomized and the captain always gets `0`.
+- Rack allocation is derived from joined player count: 2 players = 2 racks each, 3 players
+  = captain gets 2 racks, 4-5 players = 1 rack each.
+- Starting hints are per rack, not per player.
+- `game_action` is a lightweight immutable action log. `starting_hint` actions leave
+  `outcome` as `NULL`.
 - `game_action.affected_tiles` shape: `[{"tile_id":"uuid","effect":"targeted|revealed|cut"}]`.
 
 ## Getting Started
