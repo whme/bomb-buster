@@ -25,6 +25,8 @@ export interface Game {
   turn_number: number;
   detonator_step: number;
   detonator_limit: number;
+  red_wire_count: number;
+  yellow_wire_count: number;
   next_yellow_rank: number;
   started_at: string | null;
   ended_at: string | null;
@@ -36,7 +38,6 @@ export interface GameUser {
   game_id: string;
   user_id: string;
   seat_index: number;
-  is_ready: boolean;
   joined_at: string;
 }
 
@@ -81,4 +82,19 @@ export interface GameAction {
 export interface AffectedTile {
   tile_id: string;
   effect: "targeted" | "revealed" | "cut";
+}
+
+export interface AppUser {
+  id: string;
+  display_name: string;
+  created_at: string;
+}
+
+export interface GameUserWithName extends GameUser {
+  app_user: Pick<AppUser, "display_name">;
+}
+
+export interface GameSettings {
+  red_wire_count: number;
+  yellow_wire_count: number;
 }
