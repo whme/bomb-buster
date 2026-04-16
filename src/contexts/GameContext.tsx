@@ -1,12 +1,15 @@
 import { createContext, useCallback, useContext, type ReactNode } from "react";
 import { useGame } from "../hooks/useGame";
-import type { Game, GameSettings, GamePlayer } from "../types/game";
+import type { Game, GameSettings, GamePlayer, GameRack, GameTile } from "../types/game";
 
 interface GameContextValue {
   game: Game | null;
   players: GamePlayer[];
+  racks: GameRack[];
+  tiles: GameTile[];
   userId: string | null;
   captainUserId: string | null;
+  selectedTileId: string | null;
   displayName: string;
   setDisplayName: (name: string) => void;
   isHost: boolean;
@@ -15,6 +18,7 @@ interface GameContextValue {
   createGame: (displayName: string, settings: GameSettings) => Promise<Game>;
   joinGame: (inviteCode: string, displayName: string) => Promise<Game>;
   setCaptain: (userId: string) => void;
+  selectTile: (tileId: string | null) => void;
   startGame: () => Promise<void>;
   clearError: () => void;
 }

@@ -17,6 +17,7 @@ export function Lobby() {
 
   const handleStartGame = async () => {
     await startGame();
+    navigate("/board");
   };
 
   const ready = canStartGame(players, captainUserId);

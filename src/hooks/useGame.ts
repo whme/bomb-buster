@@ -2,8 +2,11 @@ import { useCallback, useState } from "react";
 import type {
   Game,
   GamePlayer,
+  GameRack,
   GameSettings,
+  GameTile,
 } from "../types/game";
+import { generateMockBoard } from "../lib/mockBoard";
 
 // TODO: Remove mocks and use real Supabase calls once edge functions are implemented.
 
@@ -22,13 +25,17 @@ function delay(ms: number): Promise<void> {
 interface UseGameReturn {
   game: Game | null;
   players: GamePlayer[];
+  racks: GameRack[];
+  tiles: GameTile[];
   userId: string | null;
   captainUserId: string | null;
+  selectedTileId: string | null;
   isLoading: boolean;
   error: string | null;
   createGame: (displayName: string, settings: GameSettings) => Promise<Game>;
   joinGame: (inviteCode: string, displayName: string) => Promise<Game>;
   setCaptain: (userId: string) => void;
+  selectTile: (tileId: string | null) => void;
   startGame: () => Promise<void>;
   clearError: () => void;
 }
@@ -36,8 +43,11 @@ interface UseGameReturn {
 export function useGame(): UseGameReturn {
   const [game, setGame] = useState<Game | null>(null);
   const [players, setPlayers] = useState<GamePlayer[]>([]);
+  const [racks, setRacks] = useState<GameRack[]>([]);
+  const [tiles, setTiles] = useState<GameTile[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [captainUserId, setCaptainUserId] = useState<string | null>(null);
+  const [selectedTileId, setSelectedTileId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -196,6 +206,10 @@ export function useGame(): UseGameReturn {
     setCaptainUserId(id);
   }, []);
 
+  const selectTile = useCallback((tileId: string | null) => {
+    setSelectedTileId(tileId);
+  }, []);
+
   const startGame = useCallback(async () => {
     if (!game || !captainUserId) return;
 
@@ -203,9 +217,41 @@ export function useGame(): UseGameReturn {
     setError(null);
     try {
       await delay(300);
-      // Captain is sent to the server here
-      console.log("Starting game with captain:", captainUserId);
-      setGame({ ...game, status: "in_progress", started_at: new Date().toISOString() });
+
+      // Assign turn order: captain first, then others by seat index
+      const updatedPlayers = players.map((p) => ({
+        ...p,
+        turn_order_index:
+          p.id === captainUserId
+            ? 0
+            : p.seat_index < players.find((cp) => cp.id === captainUserId)!.seat_index
+              ? p.seat_index + 1
+              : p.seat_index,
+      }));
+
+      const { racks: newRacks, tiles: newTiles } = generateMockBoard(
+        game.id,
+        updatedPlayers,
+        captainUserId,
+        game.red_wire_count,
+        game.yellow_wire_count,
+      );
+
+      // Set current turn to a non-current-user player for demo visibility
+      const firstOtherPlayer = updatedPlayers.find((p) => p.id !== userId);
+      const currentTurnPlayerId = firstOtherPlayer?.id ?? updatedPlayers[0].id;
+
+      setPlayers(updatedPlayers);
+      setRacks(newRacks);
+      setTiles(newTiles);
+      setGame({
+        ...game,
+        status: "in_progress",
+        started_at: new Date().toISOString(),
+        captain_player_id: captainUserId,
+        current_turn_player_id: currentTurnPlayerId,
+        turn_number: 1,
+      });
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to start game";
@@ -213,20 +259,24 @@ export function useGame(): UseGameReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [game, captainUserId]);
+  }, [game, captainUserId, players, userId]);
 
   const clearError = useCallback(() => setError(null), []);
 
   return {
     game,
     players,
+    racks,
+    tiles,
     userId,
     captainUserId,
+    selectedTileId,
     isLoading,
     error,
     createGame,
     joinGame,
     setCaptain,
+    selectTile,
     startGame,
     clearError,
   };
