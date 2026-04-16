@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspaces/bomb-busters:cached
+      - ~/.gitconfig:/home/node/.gitconfig:ro
+      - ~/.claude:/home/node/.claude:cached
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: sleep infinity
+    init: true
