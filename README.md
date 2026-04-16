@@ -335,7 +335,7 @@ bomb-buster/
 
 - [x] Project scaffolding (React + Vite + Tailwind + Supabase)
 - [x] Dev container setup (Docker with Node + Supabase local)
-- [ ] Supabase database schema and Row Level Security policies
+- [x] Supabase database schema and Row Level Security policies
 - [ ] Edge Functions for game actions (create, join, start, guess, solo cut)
 - [ ] Lobby UI (create game, QR code invite, player list, ready state)
 - [ ] Setup screen (configure player count, red/yellow wire counts)
