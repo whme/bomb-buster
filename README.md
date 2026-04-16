@@ -346,8 +346,8 @@ bomb-buster/
 - [x] Dev container setup (Docker with Node + Supabase local)
 - [x] Supabase database schema and Row Level Security policies
 - [ ] Edge Functions for game actions (create, join, start, guess, solo cut)
-- [ ] Lobby UI (create game, QR code invite, player list, ready state)
-- [ ] Setup screen (configure player count, red/yellow wire counts)
+- [x] Lobby UI (create game, QR code invite, player list, ready state)
+- [x] Setup screen (configure player count, red/yellow wire counts)
 - [ ] Game board UI (tile racks, detonator track, turn indicator)
 - [ ] Real-time state synchronization via Supabase Realtime
 - [ ] Blue, yellow, and red wire rule enforcement
