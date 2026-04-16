@@ -333,7 +333,7 @@ bomb-buster/
 
 ### Phase 1 -- MVP
 
-- [ ] Project scaffolding (React + Vite + Tailwind + Supabase)
+- [x] Project scaffolding (React + Vite + Tailwind + Supabase)
 - [x] Dev container setup (Docker with Node + Supabase local)
 - [ ] Supabase database schema and Row Level Security policies
 - [ ] Edge Functions for game actions (create, join, start, guess, solo cut)
