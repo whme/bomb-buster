@@ -19,13 +19,13 @@ export function PlayerList() {
 
       <div className="mt-3 space-y-2">
         {players.map((player) => {
-          const isCurrentUser = player.user_id === userId;
-          const isPlayerHost = player.user_id === game.host_user_id;
-          const isCaptain = player.user_id === captainUserId;
+          const isCurrentUser = player.id === userId;
+          const isPlayerHost = player.id === game.host_player_id;
+          const isCaptain = player.id === captainUserId;
 
           return (
             <div
-              key={player.user_id}
+              key={player.id}
               className={`flex items-center justify-between rounded-lg px-4 py-3 ${
                 isCurrentUser ? "bg-gray-700" : "bg-gray-900"
               } ${isCaptain ? "ring-2 ring-blue-500" : ""}`}
@@ -35,7 +35,7 @@ export function PlayerList() {
                   {player.seat_index + 1}
                 </span>
                 <span className="font-medium">
-                  {player.app_user.display_name}
+                  {player.display_name}
                 </span>
                 {isPlayerHost && (
                   <span className="rounded bg-yellow-600/30 px-2 py-0.5 text-xs text-yellow-300">
@@ -54,7 +54,7 @@ export function PlayerList() {
 
               {isHost && !isCaptain && (
                 <button
-                  onClick={() => setCaptain(player.user_id)}
+                  onClick={() => setCaptain(player.id)}
                   className="rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-medium text-gray-300 transition hover:bg-gray-500"
                 >
                   Set Captain

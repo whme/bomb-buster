@@ -1,5 +1,6 @@
 export type GameStatus =
   | "lobby"
+  | "setup"
   | "in_progress"
   | "won"
   | "lost"
@@ -7,7 +8,7 @@ export type GameStatus =
 
 export type WireType = "blue" | "yellow" | "red";
 
-export type ActionType = "hint" | "guess" | "solo_cut";
+export type ActionType = "starting_hint" | "guess" | "solo_cut";
 
 export type ActionOutcome =
   | "correct"
@@ -19,12 +20,13 @@ export type ActionOutcome =
 export interface Game {
   id: string;
   invite_code: string;
-  host_user_id: string;
+  host_player_id: string;
+  captain_player_id: string;
   status: GameStatus;
-  current_turn_rack_id: string | null;
+  current_turn_player_id: string | null;
   turn_number: number;
   detonator_step: number;
-  detonator_limit: number;
+  detonator_limit: number | null;
   red_wire_count: number;
   yellow_wire_count: number;
   next_yellow_rank: number;
@@ -34,10 +36,12 @@ export interface Game {
   updated_at: string;
 }
 
-export interface GameUser {
+export interface GamePlayer {
+  id: string;
   game_id: string;
-  user_id: string;
+  display_name: string;
   seat_index: number;
+  turn_order_index: number | null;
   joined_at: string;
 }
 
@@ -45,7 +49,7 @@ export interface GameRack {
   id: string;
   game_id: string;
   rack_index: number;
-  controller_user_id: string;
+  controller_player_id: string;
   created_at: string;
 }
 
@@ -66,14 +70,14 @@ export interface GameAction {
   id: string;
   game_id: string;
   turn_number: number;
-  actor_user_id: string;
-  actor_rack_id: string;
+  actor_player_id: string;
+  actor_rack_id: string | null;
   action_type: ActionType;
-  target_rack_id: string;
-  target_tile_id: string;
+  target_rack_id: string | null;
+  target_tile_id: string | null;
   declared_wire_type: WireType | null;
   declared_wire_rank: number | null;
-  outcome: ActionOutcome;
+  outcome: ActionOutcome | null;
   detonator_step_change: number;
   affected_tiles: AffectedTile[];
   created_at: string;
@@ -82,16 +86,6 @@ export interface GameAction {
 export interface AffectedTile {
   tile_id: string;
   effect: "targeted" | "revealed" | "cut";
-}
-
-export interface AppUser {
-  id: string;
-  display_name: string;
-  created_at: string;
-}
-
-export interface GameUserWithName extends GameUser {
-  app_user: Pick<AppUser, "display_name">;
 }
 
 export interface GameSettings {

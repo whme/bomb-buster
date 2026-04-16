@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import type {
   Game,
+  GamePlayer,
   GameSettings,
-  GameUserWithName,
 } from "../types/game";
 
 // TODO: Remove mocks and use real Supabase calls once edge functions are implemented.
@@ -21,7 +21,7 @@ function delay(ms: number): Promise<void> {
 
 interface UseGameReturn {
   game: Game | null;
-  players: GameUserWithName[];
+  players: GamePlayer[];
   userId: string | null;
   captainUserId: string | null;
   isLoading: boolean;
@@ -35,7 +35,7 @@ interface UseGameReturn {
 
 export function useGame(): UseGameReturn {
   const [game, setGame] = useState<Game | null>(null);
-  const [players, setPlayers] = useState<GameUserWithName[]>([]);
+  const [players, setPlayers] = useState<GamePlayer[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [captainUserId, setCaptainUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -55,9 +55,10 @@ export function useGame(): UseGameReturn {
         const newGame: Game = {
           id: gameId,
           invite_code: randomInviteCode(),
-          host_user_id: newUserId,
+          host_player_id: newUserId,
+          captain_player_id: newUserId,
           status: "lobby",
-          current_turn_rack_id: null,
+          current_turn_player_id: null,
           turn_number: 0,
           detonator_step: 0,
           detonator_limit: 6,
@@ -70,27 +71,30 @@ export function useGame(): UseGameReturn {
           updated_at: now,
         };
 
-        const allPlayers: GameUserWithName[] = [
+        const allPlayers: GamePlayer[] = [
           {
+            id: newUserId,
             game_id: gameId,
-            user_id: newUserId,
+            display_name: displayName,
             seat_index: 0,
+            turn_order_index: null,
             joined_at: now,
-            app_user: { display_name: displayName },
           },
           {
+            id: randomId(),
             game_id: gameId,
-            user_id: randomId(),
+            display_name: "Alice",
             seat_index: 1,
+            turn_order_index: null,
             joined_at: now,
-            app_user: { display_name: "Alice" },
           },
           {
+            id: randomId(),
             game_id: gameId,
-            user_id: randomId(),
+            display_name: "Bob",
             seat_index: 2,
+            turn_order_index: null,
             joined_at: now,
-            app_user: { display_name: "Bob" },
           },
         ];
 
@@ -127,9 +131,10 @@ export function useGame(): UseGameReturn {
         const existingGame: Game = {
           id: gameId,
           invite_code: inviteCode,
-          host_user_id: hostId,
+          host_player_id: hostId,
+          captain_player_id: hostId,
           status: "lobby",
-          current_turn_rack_id: null,
+          current_turn_player_id: null,
           turn_number: 0,
           detonator_step: 0,
           detonator_limit: 6,
@@ -142,27 +147,30 @@ export function useGame(): UseGameReturn {
           updated_at: now,
         };
 
-        const allPlayers: GameUserWithName[] = [
+        const allPlayers: GamePlayer[] = [
           {
+            id: hostId,
             game_id: gameId,
-            user_id: hostId,
+            display_name: "Host Player",
             seat_index: 0,
+            turn_order_index: null,
             joined_at: now,
-            app_user: { display_name: "Host Player" },
           },
           {
+            id: newUserId,
             game_id: gameId,
-            user_id: newUserId,
+            display_name: displayName,
             seat_index: 1,
+            turn_order_index: null,
             joined_at: now,
-            app_user: { display_name: displayName },
           },
           {
+            id: randomId(),
             game_id: gameId,
-            user_id: randomId(),
+            display_name: "Charlie",
             seat_index: 2,
+            turn_order_index: null,
             joined_at: now,
-            app_user: { display_name: "Charlie" },
           },
         ];
 

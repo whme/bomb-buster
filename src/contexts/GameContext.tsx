@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, type ReactNode } from "react";
 import { useGame } from "../hooks/useGame";
-import type { Game, GameSettings, GameUserWithName } from "../types/game";
+import type { Game, GameSettings, GamePlayer } from "../types/game";
 
 interface GameContextValue {
   game: Game | null;
-  players: GameUserWithName[];
+  players: GamePlayer[];
   userId: string | null;
   captainUserId: string | null;
   displayName: string;
@@ -43,7 +43,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const isHost =
     gameHook.game !== null &&
     gameHook.userId !== null &&
-    gameHook.game.host_user_id === gameHook.userId;
+    gameHook.game.host_player_id === gameHook.userId;
 
   return (
     <GameContext.Provider
