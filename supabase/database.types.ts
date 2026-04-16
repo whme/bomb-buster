@@ -322,7 +322,43 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_game_lobby: {
+        Args: {
+          display_name_input: string
+        }
+        Returns: {
+          game_id: string
+          invite_code: string
+          status: Database["public"]["Enums"]["game_status"]
+          captain_player_id: string
+          red_wire_count: number
+          yellow_wire_count: number
+          player_id: string
+          display_name: string
+          seat_index: number
+        }[]
+      }
+      generate_game_invite_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      join_game_lobby: {
+        Args: {
+          invite_code_input: string
+          display_name_input: string
+        }
+        Returns: {
+          game_id: string
+          invite_code: string
+          status: Database["public"]["Enums"]["game_status"]
+          captain_player_id: string
+          red_wire_count: number
+          yellow_wire_count: number
+          player_id: string
+          display_name: string
+          seat_index: number
+        }[]
+      }
     }
     Enums: {
       action_outcome: "correct" | "incorrect" | "hit_red" | "win" | "lose"

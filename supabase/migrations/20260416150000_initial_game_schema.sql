@@ -204,6 +204,205 @@ create index game_action_game_created_at_idx
 create index game_action_game_turn_number_idx
   on public.game_action (game_id, turn_number);
 
+create or replace function public.generate_game_invite_code()
+returns text
+language plpgsql
+as $$
+declare
+  invite_code_characters constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  generated_invite_code text := '';
+  character_position integer;
+begin
+  for character_position in 1..6 loop
+    generated_invite_code :=
+      generated_invite_code ||
+      substr(
+        invite_code_characters,
+        1 + floor(random() * length(invite_code_characters))::integer,
+        1
+      );
+  end loop;
+
+  return generated_invite_code;
+end;
+$$;
+
+create or replace function public.create_game_lobby(display_name_input text)
+returns table (
+  game_id uuid,
+  invite_code text,
+  status public.game_status,
+  captain_player_id uuid,
+  red_wire_count integer,
+  yellow_wire_count integer,
+  player_id uuid,
+  display_name text,
+  seat_index integer
+)
+language plpgsql
+as $$
+declare
+  trimmed_display_name text := btrim(display_name_input);
+  created_game_id uuid := gen_random_uuid();
+  created_player_id uuid := gen_random_uuid();
+  created_invite_code text;
+  conflicting_constraint_name text;
+begin
+  if trimmed_display_name = '' then
+    raise exception using errcode = 'P0001', message = 'display_name_invalid';
+  end if;
+
+  loop
+    created_invite_code := public.generate_game_invite_code();
+
+    begin
+      insert into public.game (
+        id,
+        invite_code,
+        host_player_id,
+        captain_player_id
+      )
+      values (
+        created_game_id,
+        created_invite_code,
+        created_player_id,
+        created_player_id
+      );
+
+      insert into public.game_player (
+        id,
+        game_id,
+        display_name,
+        seat_index
+      )
+      values (
+        created_player_id,
+        created_game_id,
+        trimmed_display_name,
+        0
+      );
+
+      exit;
+    exception
+      when unique_violation then
+        get stacked diagnostics
+          conflicting_constraint_name = constraint_name;
+
+        if conflicting_constraint_name = 'game_invite_code_key' then
+          continue;
+        end if;
+
+        raise;
+    end;
+  end loop;
+
+  return query
+  select
+    created_game_id,
+    created_invite_code,
+    'lobby'::public.game_status,
+    created_player_id,
+    0,
+    0,
+    created_player_id,
+    trimmed_display_name,
+    0;
+end;
+$$;
+
+create or replace function public.join_game_lobby(
+  invite_code_input text,
+  display_name_input text
+)
+returns table (
+  game_id uuid,
+  invite_code text,
+  status public.game_status,
+  captain_player_id uuid,
+  red_wire_count integer,
+  yellow_wire_count integer,
+  player_id uuid,
+  display_name text,
+  seat_index integer
+)
+language plpgsql
+as $$
+declare
+  trimmed_display_name text := btrim(display_name_input);
+  normalized_invite_code text := upper(btrim(invite_code_input));
+  locked_game public.game%rowtype;
+  created_player_id uuid := gen_random_uuid();
+  created_seat_index integer;
+  joined_player_count integer;
+begin
+  if trimmed_display_name = '' then
+    raise exception using errcode = 'P0001', message = 'display_name_invalid';
+  end if;
+
+  select *
+  into locked_game
+  from public.game
+  where game.invite_code = normalized_invite_code
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0001', message = 'game_not_found';
+  end if;
+
+  if locked_game.status <> 'lobby' then
+    raise exception using errcode = 'P0001', message = 'invalid_status';
+  end if;
+
+  select count(*)
+  into joined_player_count
+  from public.game_player
+  where game_player.game_id = locked_game.id;
+
+  if joined_player_count >= 5 then
+    raise exception using errcode = 'P0001', message = 'game_full';
+  end if;
+
+  if exists (
+    select 1
+    from public.game_player
+    where game_player.game_id = locked_game.id
+      and lower(trim(game_player.display_name)) = lower(trimmed_display_name)
+  ) then
+    raise exception using errcode = 'P0001', message = 'display_name_taken';
+  end if;
+
+  select coalesce(max(game_player.seat_index) + 1, 0)
+  into created_seat_index
+  from public.game_player
+  where game_player.game_id = locked_game.id;
+
+  insert into public.game_player (
+    id,
+    game_id,
+    display_name,
+    seat_index
+  )
+  values (
+    created_player_id,
+    locked_game.id,
+    trimmed_display_name,
+    created_seat_index
+  );
+
+  return query
+  select
+    locked_game.id,
+    locked_game.invite_code,
+    locked_game.status,
+    locked_game.captain_player_id,
+    locked_game.red_wire_count,
+    locked_game.yellow_wire_count,
+    created_player_id,
+    trimmed_display_name,
+    created_seat_index;
+end;
+$$;
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql

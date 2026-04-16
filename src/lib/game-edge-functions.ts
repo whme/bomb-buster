@@ -14,7 +14,7 @@ import {
   type UpdateGameSettingsRequest,
   type UpdateGameSettingsResponse,
   type GameEdgeFunctionName,
-} from "../shared/supabase-edge-functions.ts";
+} from "../shared/game-edge-function-contracts.ts";
 
 async function invokeGameEdgeFunction<RequestBody, ResponseBody>(
   functionName: GameEdgeFunctionName,

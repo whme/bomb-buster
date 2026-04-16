@@ -7,6 +7,7 @@ import type {
 
 export type SupabaseDatabase = Database;
 export type SupabaseJson = Json;
+export type PublicSchema = SupabaseDatabase["public"];
 
 export type GameRow = Tables<"game">;
 export type GamePlayerRow = Tables<"game_player">;
@@ -18,6 +19,18 @@ export type GameStatus = Enums<"game_status">;
 export type WireType = Enums<"wire_type">;
 export type GameActionType = Enums<"game_action_type">;
 export type ActionOutcome = Enums<"action_outcome">;
+
+export type PublicFunctionResultRow<
+  FunctionName extends keyof PublicSchema["Functions"],
+> = PublicSchema["Functions"][FunctionName]["Returns"] extends Array<
+  infer ResultRow
+>
+  ? ResultRow
+  : never;
+
+export type CreateGameLobbyResultRow =
+  PublicFunctionResultRow<"create_game_lobby">;
+export type JoinGameLobbyResultRow = PublicFunctionResultRow<"join_game_lobby">;
 
 export interface GameSettingsSnapshot {
   captain_player_id: GameRow["captain_player_id"];
