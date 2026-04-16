@@ -121,6 +121,116 @@ re-render accordingly.
 **Invites** work by generating a URL containing the game session ID. This URL is encoded as a
 QR code that other players scan to join.
 
+## Database Schema (MVP)
+
+```mermaid
+erDiagram
+    app_user {
+        uuid id PK
+        text display_name
+        timestamptz created_at
+    }
+
+    game {
+        uuid id PK
+        text invite_code UK
+        uuid host_user_id FK
+        game_status status "lobby,in_progress,won,lost,cancelled"
+        uuid current_turn_rack_id FK
+        int turn_number
+        int detonator_step
+        int detonator_limit
+        int next_yellow_rank
+        timestamptz started_at
+        timestamptz ended_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    game_rack {
+        uuid id PK
+        uuid game_id FK
+        int rack_index
+        uuid controller_user_id FK
+        timestamptz created_at
+    }
+
+    game_user {
+        uuid game_id PK,FK
+        uuid user_id PK,FK
+        int seat_index
+        boolean is_ready
+        timestamptz joined_at
+    }
+
+    game_tile {
+        uuid id PK
+        uuid game_id FK
+        uuid rack_id FK
+        int rack_position
+        wire_type wire_type "blue,yellow,red"
+        int wire_rank
+        boolean is_revealed
+        boolean is_cut
+        timestamptz revealed_at
+        timestamptz cut_at
+    }
+
+    game_action {
+        uuid id PK
+        uuid game_id FK
+        int turn_number
+        uuid actor_user_id FK
+        uuid actor_rack_id FK
+        game_action_type action_type "hint,guess,solo_cut"
+        uuid target_rack_id FK
+        uuid target_tile_id FK
+        wire_type declared_wire_type "blue,yellow,red"
+        int declared_wire_rank
+        action_outcome outcome "correct,incorrect,hit_red,win,lose"
+        int detonator_step_change
+        jsonb affected_tiles
+        timestamptz created_at
+    }
+
+    app_user ||--o{ game : hosts
+    game o|--o| game_rack : current_turn
+
+    game ||--o{ game_user : has_players
+    app_user ||--o{ game_user : joins
+
+    game ||--o{ game_rack : has_racks
+    app_user ||--o{ game_rack : controls
+
+    game ||--o{ game_tile : has
+    game_rack ||--o{ game_tile : owns
+
+    game ||--o{ game_action : logs
+    app_user ||--o{ game_action : actor
+    game_rack ||--o{ game_action : actor_rack
+    game_rack ||--o{ game_action : target_rack
+    game_tile ||--o{ game_action : target_tile
+```
+
+### Enum Types
+
+| Enum | Used By | Values |
+|---|---|---|
+| `game_status` | `game.status` | `lobby`, `in_progress`, `won`, `lost`, `cancelled` |
+| `wire_type` | `game_tile.wire_type`, `game_action.declared_wire_type` | `blue`, `yellow`, `red` |
+| `game_action_type` | `game_action.action_type` | `hint`, `guess`, `solo_cut` |
+| `action_outcome` | `game_action.outcome` | `correct`, `incorrect`, `hit_red`, `win`, `lose` |
+| `affected_tile_effect` (JSON value) | `game_action.affected_tiles[].effect` | `targeted`, `revealed`, `cut` |
+
+### Notes
+
+- `game` stores both lobby data and in-game runtime state.
+- `game_user` tracks membership/readiness (one row per user per game).
+- `game_rack` allows one user to control multiple racks in the same game.
+- Turn flow is rack-based via `game.current_turn_rack_id`.
+- `game_action` is a lightweight immutable action log.
+- `game_action.affected_tiles` shape: `[{"tile_id":"uuid","effect":"targeted|revealed|cut"}]`.
+
 ## Getting Started
 
 ### Prerequisites
